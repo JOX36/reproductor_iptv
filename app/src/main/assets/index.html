@@ -1019,6 +1019,74 @@ function openMX(){const url=getStreamURL();if(!url){toast('⚠️ No hay stream 
 function openMXPro(){const url=getStreamURL();if(!url){toast('⚠️ No hay stream activo');return}document.getElementById('dropExt').classList.remove('open');window.location.href=`intent:${url}#Intent;package=com.mxtech.videoplayer.pro;action=android.intent.action.VIEW;type=video/*;end`;toast('⚡ Abriendo en MX Player Pro...')}
 function copyStreamURL(){const url=getStreamURL();if(!url){toast('⚠️ No hay stream activo');return}document.getElementById('dropExt').classList.remove('open');navigator.clipboard.writeText(url).then(()=>toast('📋 URL copiada')).catch(()=>{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('📋 URL copiada')})}
 
+// ══ TV REMOTE NAVIGATION ══
+const TV={catIdx:0,chIdx:0,focus:'cats'};
+
+function tvGetCats(){return S.cats[S.sec]||[]}
+function tvGetChannels(){
+  const area=document.getElementById('contentArea');
+  return Array.from(area.querySelectorAll('.ch-card,.vod-card,.list-item'));
+}
+function tvGetCatItems(){
+  return Array.from(document.getElementById('sideList').querySelectorAll('.cat-item'));
+}
+function tvHighlightCat(idx){
+  const items=tvGetCatItems();
+  items.forEach((el,i)=>{
+    el.style.outline=i===idx?'2px solid var(--accent)':'';
+    el.style.background=i===idx?'rgba(0,212,255,.18)':'';
+  });
+  if(items[idx])items[idx].scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function tvHighlightCh(idx){
+  const items=tvGetChannels();
+  items.forEach((el,i)=>{el.style.outline=i===idx?'3px solid var(--accent)':''});
+  if(items[idx])items[idx].scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function tvClearHighlights(){
+  tvGetCatItems().forEach(el=>{el.style.outline='';el.style.background=''});
+  tvGetChannels().forEach(el=>{el.style.outline=''});
+}
+
+document.addEventListener('keydown',e=>{
+  const key=e.keyCode;
+  if(!document.getElementById('appScreen')||document.getElementById('appScreen').style.display==='none')return;
+  if(document.activeElement.tagName==='INPUT')return;
+  if(!document.getElementById('seriesModal').classList.contains('hidden'))return;
+
+  if(key===179||key===415||key===19){
+    const vid=document.getElementById('vid');
+    if(vid&&!vid.paused)vid.pause();else if(vid)vid.play().catch(()=>{});
+    e.preventDefault();return;
+  }
+
+  if(TV.focus==='cats'){
+    const cats=tvGetCats();
+    if(key===40){TV.catIdx=Math.min(TV.catIdx+1,cats.length-1);tvHighlightCat(TV.catIdx);e.preventDefault();}
+    else if(key===38){TV.catIdx=Math.max(TV.catIdx-1,0);tvHighlightCat(TV.catIdx);e.preventDefault();}
+    else if(key===13||key===39){
+      const cat=cats[TV.catIdx];
+      if(cat)selectCat(cat.id).then(()=>{TV.focus='channels';TV.chIdx=0;setTimeout(()=>tvHighlightCh(0),400);});
+      e.preventDefault();
+    }
+  }else if(TV.focus==='channels'){
+    const items=tvGetChannels();
+    const cols=S.sec==='live'?3:2;
+    if(key===40){TV.chIdx=Math.min(TV.chIdx+cols,items.length-1);tvHighlightCh(TV.chIdx);e.preventDefault();}
+    else if(key===38){TV.chIdx=Math.max(TV.chIdx-cols,0);tvHighlightCh(TV.chIdx);e.preventDefault();}
+    else if(key===39){TV.chIdx=Math.min(TV.chIdx+1,items.length-1);tvHighlightCh(TV.chIdx);e.preventDefault();}
+    else if(key===37){
+      if(TV.chIdx===0){TV.focus='cats';tvClearHighlights();tvHighlightCat(TV.catIdx);}
+      else{TV.chIdx=Math.max(TV.chIdx-1,0);tvHighlightCh(TV.chIdx);}
+      e.preventDefault();
+    }
+    else if(key===13){if(items[TV.chIdx])items[TV.chIdx].click();e.preventDefault();}
+    else if(key===8||key===27){TV.focus='cats';tvClearHighlights();tvHighlightCat(TV.catIdx);e.preventDefault();}
+  }
+});
+
+setTimeout(()=>{if(TV.focus==='cats')tvHighlightCat(TV.catIdx);},1500);
+
 // ══ INIT ══
 initSetup();
 initSwipe();
