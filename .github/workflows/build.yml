@@ -2,8 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [ main, master ]
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
   build:
@@ -19,15 +18,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Dar permisos a gradlew
-        run: chmod +x ./gradlew
+      - name: Instalar Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
 
       - name: Build APK Release
-        run: ./gradlew assembleRelease
+        run: gradle assembleRelease --project-dir .
 
       - name: Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: JOX3-IPTV-APK
-          path: app/build/outputs/apk/release/app-release*.apk
-          retention-days: 30
+          name: iptv-player-apk
+          path: app/build/outputs/apk/release/*.apk
