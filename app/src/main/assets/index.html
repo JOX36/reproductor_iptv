@@ -727,16 +727,35 @@ function play(item){
   if(S.hls){S.hls.destroy();S.hls=null}
   const vid=document.getElementById('vid');vid.pause();vid.removeAttribute('src');
   const url=item.url;if(!url){showOverlay(true,false,'❌ Sin URL');setStatus('error');return}
+
+  // VOD y Series: usar reproductor nativo directamente, sin hls.js
+  if(item.type==='vod'){
+    vid.src=url;
+    vid.oncanplay=()=>{vid.play().catch(()=>{});showOverlay(false);setStatus('vod');vid.oncanplay=null};
+    vid.onerror=()=>{
+      // Si falla nativo, intentar con hls.js como fallback
+      vid.onerror=null;
+      if(Hls.isSupported()&&url.includes('.m3u8')){
+        S.hls=new Hls({enableWorker:true,lowLatencyMode:true,backBufferLength:30});
+        S.hls.loadSource(url);S.hls.attachMedia(vid);
+        S.hls.on(Hls.Events.MANIFEST_PARSED,()=>{vid.play().catch(()=>{});showOverlay(false);setStatus('vod')});
+        S.hls.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal){setStatus('error');showOverlay(true,false,'❌ No se puede reproducir\n📲 Usa "Abrir en..." → VLC o MX Player')}});
+      }else{setStatus('error');showOverlay(true,false,'❌ No se puede reproducir\n📲 Usa "Abrir en..." → VLC o MX Player')}
+    };
+    document.getElementById('playerWrap').scrollIntoView({behavior:'smooth',block:'nearest'});
+    clearInterval(EPG.timer);document.getElementById('epgBar').classList.remove('visible');
+    const ov=document.getElementById('vidEpgOverlay');if(ov)ov.classList.remove('show');
+    return;
+  }
+
+  // Live: usar hls.js
   if(Hls.isSupported()){
     S.hls=new Hls({enableWorker:true,lowLatencyMode:true,backBufferLength:30});
     S.hls.loadSource(url);S.hls.attachMedia(vid);
-    S.hls.on(Hls.Events.MANIFEST_PARSED,()=>{vid.play().catch(()=>{});showOverlay(false);setStatus(item.type==='live'?'live':'vod')});
+    S.hls.on(Hls.Events.MANIFEST_PARSED,()=>{vid.play().catch(()=>{});showOverlay(false);setStatus('live')});
     S.hls.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal){setStatus('error');showOverlay(true,false,'❌ No se puede reproducir aquí\nEl servidor bloquea CORS\n📲 Usa "Abrir en..." → VLC o MX Player')}});
   }else if(vid.canPlayType('application/vnd.apple.mpegurl')){
-    vid.src=url;vid.play().catch(()=>{});showOverlay(false);setStatus(item.type==='live'?'live':'vod');
-  }else if(item.type==='vod'){
-    vid.src=url;vid.play().catch(()=>{});showOverlay(false);setStatus('vod');
-    vid.onerror=()=>{setStatus('error');showOverlay(true,false,'❌ Formato no soportado')};
+    vid.src=url;vid.play().catch(()=>{});showOverlay(false);setStatus('live');
   }else{showOverlay(true,false,'⚠️ Navegador no soporta este stream');setStatus('error')}
   document.getElementById('playerWrap').scrollIntoView({behavior:'smooth',block:'nearest'});
   if(item.type==='live'){loadEpg(item.id)}else{clearInterval(EPG.timer);document.getElementById('epgBar').classList.remove('visible');const ov=document.getElementById('vidEpgOverlay');if(ov)ov.classList.remove('show')}
