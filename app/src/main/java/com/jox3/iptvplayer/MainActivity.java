@@ -100,7 +100,6 @@ public class MainActivity extends Activity {
             .setMessage("¿Deseas salir de IPTV JOX3?")
             .setPositiveButton("Sí", (dialog, which) -> finish())
             .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
-            .setDefaultButton(AlertDialog.BUTTON_NEGATIVE)
             .show();
     }
 }
