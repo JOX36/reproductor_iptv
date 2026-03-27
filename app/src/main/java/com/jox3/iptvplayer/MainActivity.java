@@ -1,6 +1,7 @@
 package com.jox3.iptvplayer;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.Window;
 import android.view.WindowManager;
@@ -12,6 +13,7 @@ import android.view.View;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private long lastBackPress = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,7 +79,28 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+        // Primero intentar navegación interna del HTML
+        if (webView.canGoBack()) {
+            webView.goBack();
+            return;
+        }
+
+        // Llamar a la función JS de navegación TV
+        webView.evaluateJavascript("typeof tvHandleBack === 'function' ? tvHandleBack() : true", result -> {
+            if ("true".equals(result)) {
+                // No hay más niveles — mostrar diálogo de salida
+                runOnUiThread(() -> showExitDialog());
+            }
+        });
+    }
+
+    private void showExitDialog() {
+        new AlertDialog.Builder(this)
+            .setTitle("Salir")
+            .setMessage("¿Deseas salir de IPTV JOX3?")
+            .setPositiveButton("Sí", (dialog, which) -> finish())
+            .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
+            .setDefaultButton(AlertDialog.BUTTON_NEGATIVE)
+            .show();
     }
 }
